@@ -13,4 +13,4 @@ Login Form (Apache Redirect)
 <hr>
 <address>Apache/2.4.10 (Win32) OpenSSL/1.0.1h PHP/5.4.31 Server at 192.168.1.33 Port 80</address>
 </body></html>
-[root:~]#
+

